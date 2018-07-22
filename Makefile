@@ -16,3 +16,6 @@ test_once:
 
 test:
 	npm run jest --silent -- --watch
+
+lines:
+	npm run sloc ./src
