@@ -1,10 +1,11 @@
 import URL from 'url';
 import path from 'path';
-import NetworkReader from './NetworkReader';
-import FileReader from './FileReader';
-import Converter from './Converter';
-import ConverterAtomToRss from './ConverterAtomToRss';
-import ConverterRssToAtom from './ConverterRssToAtom';
+import NetworkReader from './readers/NetworkReader';
+import FileReader from './readers/FileReader';
+import RssParser from './parsers/RssParser';
+import AtomParser from './parsers/AtomParser';
+import RssConverter from './converters/RssConverter';
+import AtomConverter from './converters/AtomConverter';
 
 
 const isUrl = url => Boolean(URL.parse(url).host);
@@ -24,29 +25,25 @@ const getReader = pathToFile => readersMap
   .find(el => el.check(pathToFile))
   .reader;
 
-const convertersMap = [
-  {
-    check: (inputFormat, outputFormat) => inputFormat === outputFormat,
-    converter: Converter,
-  },
-  {
-    check: (inputFormat, outputFormat) => inputFormat === 'rss' && outputFormat === 'atom',
-    converter: ConverterRssToAtom,
-  },
-  {
-    check: (inputFormat, outputFormat) => inputFormat === 'atom' && outputFormat === 'rss',
-    converter: ConverterAtomToRss,
-  },
-];
+const parsers = {
+  rss: RssParser,
+  atom: AtomParser,
+};
 
-const getConverter = (inputFormat, outputFormat) => convertersMap
-  .find(el => el.check(inputFormat, outputFormat))
-  .converter;
+const converters = {
+  rss: RssConverter,
+  atom: AtomConverter,
+};
+
 
 export default async (pathToFile, outputFormat) => {
   const inputFormat = path.extname(pathToFile).slice(1);
   const reader = new (getReader(pathToFile))();
+  const parser = new (parsers[inputFormat])();
+
   const xml = await reader.read(pathToFile);
-  const converter = new (getConverter(inputFormat, outputFormat))(xml);
+  const ast = parser.parse(xml);
+  const converter =  new (converters[outputFormat])(ast);
+
   return converter.convert();
 };
