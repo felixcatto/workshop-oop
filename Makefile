@@ -8,7 +8,7 @@ build:
 
 
 start: build
-	node dist/bin/convert-feed.js __tests__/fixtures/rss.xml
+	node dist/bin/convert-feed.js __tests__/fixtures/feed.rss
 
 test_once:
 	npm run jest --silent

@@ -1,33 +1,52 @@
 import URL from 'url';
+import path from 'path';
 import NetworkReader from './NetworkReader';
 import FileReader from './FileReader';
-import FeedConverterRss from './FeedConverterRss';
-import FeedConverterAtom from './FeedConverterAtom';
+import Converter from './Converter';
+import ConverterAtomToRss from './ConverterAtomToRss';
+import ConverterRssToAtom from './ConverterRssToAtom';
 
 
 const isUrl = url => Boolean(URL.parse(url).host);
 
-const pathToReaderMap = [
+const readersMap = [
   {
-    check: path => isUrl(path),
+    check: pathToFile => isUrl(pathToFile),
     reader: NetworkReader,
   },
   {
-    check: path => !isUrl(path),
+    check: pathToFile => !isUrl(pathToFile),
     reader: FileReader,
   },
 ];
 
-const pathToReader = path => pathToReaderMap.find(el => el.check(path)).reader;
+const getReader = pathToFile => readersMap
+  .find(el => el.check(pathToFile))
+  .reader;
 
-const converters = {
-  rss: FeedConverterRss,
-  atom: FeedConverterAtom,
-};
+const convertersMap = [
+  {
+    check: (inputFormat, outputFormat) => inputFormat === outputFormat,
+    converter: Converter,
+  },
+  {
+    check: (inputFormat, outputFormat) => inputFormat === 'rss' && outputFormat === 'atom',
+    converter: ConverterRssToAtom,
+  },
+  {
+    check: (inputFormat, outputFormat) => inputFormat === 'atom' && outputFormat === 'rss',
+    converter: ConverterAtomToRss,
+  },
+];
 
-export default async (path, format) => {
-  const reader = new (pathToReader(path))();
-  const xml = await reader.read(path);
-  const converter = new (converters[format])(xml);
+const getConverter = (inputFormat, outputFormat) => convertersMap
+  .find(el => el.check(inputFormat, outputFormat))
+  .converter;
+
+export default async (pathToFile, outputFormat) => {
+  const inputFormat = path.extname(pathToFile).slice(1);
+  const reader = new (getReader(pathToFile))();
+  const xml = await reader.read(pathToFile);
+  const converter = new (getConverter(inputFormat, outputFormat))(xml);
   return converter.convert();
 };
